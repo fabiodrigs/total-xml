@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Leitor de XML - Valor Total</title>
+  <title>Somar Valores de Múltiplos XMLs</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -13,7 +13,7 @@
       padding: 30px;
       text-align: center;
       border-radius: 10px;
-      max-width: 500px;
+      max-width: 600px;
       margin: auto;
     }
     #resultado {
@@ -22,37 +22,65 @@
       font-size: 1.2em;
       color: green;
     }
+    #lista {
+      margin-top: 15px;
+      font-size: 0.95em;
+      text-align: left;
+    }
   </style>
 </head>
 <body>
   <div class="box">
-    <h2>Enviar XML e Ver Valor Total</h2>
-    <input type="file" id="xmlFile" accept=".xml" />
+    <h2>Somar Total de Vários Arquivos XML</h2>
+    <input type="file" id="xmlFiles" accept=".xml" multiple />
     <div id="resultado"></div>
+    <div id="lista"></div>
   </div>
 
   <script>
-    document.getElementById('xmlFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
+    document.getElementById('xmlFiles').addEventListener('change', function (e) {
+      const files = e.target.files;
+      let total = 0;
+      let lidos = 0;
+      let listaValores = '';
 
-      const reader = new FileReader();
-      reader.onload = function(event) {
-        const xmlString = event.target.result;
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+      if (files.length === 0) {
+        document.getElementById("resultado").textContent = "Nenhum arquivo selecionado.";
+        return;
+      }
 
-        // Tenta encontrar a tag <vTot> ou <vNF> (comum em notas fiscais)
-        const valorTag = xmlDoc.querySelector("vTot, vNF");
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
 
-        if (valorTag) {
-          const valor = valorTag.textContent;
-          document.getElementById("resultado").textContent = "Valor Total: R$ " + valor;
-        } else {
-          document.getElementById("resultado").textContent = "Tag <vTot> ou <vNF> não encontrada no XML.";
-        }
-      };
-      reader.readAsText(file);
+        reader.onload = function (event) {
+          const xmlString = event.target.result;
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+
+          // Tente encontrar a tag <vTot> ou <vNF> (padrão de NF-e)
+          const valorTag = xmlDoc.querySelector("vTot, vNF");
+
+          if (valorTag) {
+            const valor = parseFloat(valorTag.textContent.replace(',', '.'));
+            if (!isNaN(valor)) {
+              total += valor;
+              listaValores += `<li>${file.name}: R$ ${valor.toFixed(2)}</li>`;
+            } else {
+              listaValores += `<li>${file.name}: Valor inválido</li>`;
+            }
+          } else {
+            listaValores += `<li>${file.name}: Tag <vTot> ou <vNF> não encontrada</li>`;
+          }
+
+          lidos++;
+          if (lidos === files.length) {
+            document.getElementById("resultado").textContent = "Total Somado: R$ " + total.toFixed(2);
+            document.getElementById("lista").innerHTML = "<ul>" + listaValores + "</ul>";
+          }
+        };
+
+        reader.readAsText(file);
+      });
     });
   </script>
 </body>
